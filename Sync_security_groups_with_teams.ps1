@@ -1,10 +1,14 @@
 ﻿[CmdletBinding(SupportsShouldProcess=$true)]
 Param()
+# Logs Location
+$Logfile = "$PSScriptRoot\Logs\Sync-$(get-date -f dd-MM-yyyy).log"
+
+# Logs folder
 if(!(Test-Path $PSScriptRoot\Logs -PathType Container))
 {
     New-Item -ItemType Directory -Force -Path $PSScriptRoot\Logs
 }
-$Logfile = "$PSScriptRoot\Logs\Sync-$(get-date -f dd-MM-yyyy).log"
+#region Functions
 Function LogWrite
 {
    Param ([string]$logstring)
@@ -34,10 +38,12 @@ param(
         Return $UserMembers
     }
 }
+#endregion
 
 $Time = get-date -f "dd-MM-yyyy HH:mm:ss"
 LogWrite "Starting script $Time"
 
+#region Authentication
 $credentials = import-clixml -path "$PSScriptRoot\cred.clixml"
 try {
     Connect-MicrosoftTeams -Credential $credentials
@@ -50,6 +56,9 @@ catch {
     LogWrite "$($_)"
     exit
 }
+#endregion
+
+#region config_file
 try{
     $list = import-csv "$PSScriptRoot\Security_groups_Teams_sync_example.csv"
 }
@@ -59,6 +68,7 @@ catch{
     LogWrite "$($_)"
     exit
 }
+#endregion
 
 $AllADSecGroups = Get-AzureADGroup -All $true
 #Add users from Security Group to Teams and Teams Channel
@@ -159,7 +169,7 @@ ForEach($item in $list)
     ForEach($ChannelUser in $ChannelUsers)
     {
         Write-Verbose "Processing ChannelUser: $($ChannelUser.User)"
-        if($ChannelUser.User -ne "admin@myneva.onmicrosoft.com"){
+        if($ChannelUser.User -ne "admin@contoso.onmicrosoft.com"){
             $SecurityGroupUser = $ADSecGroup | Get-RecursiveAzureAdGroupMemberUsers | Where-Object {$_.UserPrincipalName -eq $ChannelUser.User}
             if(!$SecurityGroupUser){
                 Write-Host Removing user: $ChannelUser.User
